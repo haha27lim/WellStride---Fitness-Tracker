@@ -1,0 +1,15 @@
+package com.example.Fitness_Tracker.repository;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import com.example.Fitness_Tracker.entity.ERole;
+import com.example.Fitness_Tracker.entity.Role;
+
+import java.util.Optional;
+
+
+@Repository
+public interface RoleRepository extends JpaRepository<Role, Integer> {
+    Optional<Role> findByName(ERole name);
+}
