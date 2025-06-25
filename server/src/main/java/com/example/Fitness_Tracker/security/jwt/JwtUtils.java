@@ -2,11 +2,15 @@ package com.example.Fitness_Tracker.security.jwt;
 
 import java.security.Key;
 import java.util.Date;
+import java.util.stream.Collectors;
+
+import javax.crypto.SecretKey;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseCookie;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.WebUtils;
 
@@ -42,13 +46,13 @@ public class JwtUtils {
   }
 
   public ResponseCookie generateJwtCookie(UserDetailsImpl userPrincipal) {
-    String jwt = generateTokenFromUsername(userPrincipal.getUsername());
+    String jwt = generateTokenFromUsername(userPrincipal);
     return ResponseCookie.from(jwtCookie, jwt)
-        .path("/api")
-        .maxAge(24 * 60 * 60)
+        .path("/")
+        .maxAge(jwtExpirationMs / 1000)
         .httpOnly(true)
-        .secure(true) // Enable for HTTPS
-        .sameSite("Strict") // Protection against CSRF
+        .secure(true)
+        .sameSite("None")
         .build();
   }
 
@@ -58,8 +62,10 @@ public class JwtUtils {
   }
 
   public String getUserNameFromJwtToken(String token) {
-    return Jwts.parserBuilder().setSigningKey(key()).build()
-        .parseClaimsJws(token).getBody().getSubject();
+    return Jwts.parser()
+        .verifyWith((SecretKey) key())
+        .build().parseSignedClaims(token)
+        .getPayload().getSubject();
   }
 
   private Key key() {
@@ -69,7 +75,7 @@ public class JwtUtils {
   public boolean validateJwtToken(String authToken) {
 
     try {
-      Jwts.parserBuilder().setSigningKey(key()).build().parse(authToken);
+      Jwts.parser().verifyWith((SecretKey) key()).build().parseSignedClaims(authToken);
       return true;
     } catch (MalformedJwtException e) {
       logger.error("Invalid JWT token: {}", e.getMessage());
@@ -84,12 +90,22 @@ public class JwtUtils {
     return false;
   }
 
-  public String generateTokenFromUsername(String username) {
+  public String generateTokenFromUsername(UserDetails userDetails) {
+    String username = userDetails.getUsername();
+    String roles = userDetails.getAuthorities().stream()
+        .map(authority -> authority.getAuthority())
+        .collect(Collectors.joining(","));
+    String email = "";
+    if (userDetails instanceof UserDetailsImpl) {
+      email = ((UserDetailsImpl) userDetails).getEmail();
+    }
     return Jwts.builder()
-        .setSubject(username)
-        .setIssuedAt(new Date())
-        .setExpiration(new Date((new Date()).getTime() + jwtExpirationMs))
-        .signWith(key(), SignatureAlgorithm.HS256)
+        .subject(username)
+        .claim("roles", roles)
+        .claim("email", email)
+        .issuedAt(new Date())
+        .expiration(new Date((new Date()).getTime() + jwtExpirationMs))
+        .signWith(key())
         .compact();
   }
 }

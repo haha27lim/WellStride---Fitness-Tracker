@@ -5,18 +5,27 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.example.Fitness_Tracker.entity.ERole;
 import com.example.Fitness_Tracker.entity.Role;
 import com.example.Fitness_Tracker.entity.User;
+import com.example.Fitness_Tracker.event.RegistrationCompleteEvent;
 import com.example.Fitness_Tracker.payload.request.LoginRequest;
 import com.example.Fitness_Tracker.payload.request.SignupRequest;
 import com.example.Fitness_Tracker.payload.response.MessageResponse;
@@ -33,12 +43,14 @@ import com.example.Fitness_Tracker.repository.RoleRepository;
 import com.example.Fitness_Tracker.repository.UserRepository;
 import com.example.Fitness_Tracker.security.jwt.JwtUtils;
 import com.example.Fitness_Tracker.security.services.UserDetailsImpl;
+import com.example.Fitness_Tracker.service.UserServiceImpl;
 
-
-@CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+
+  private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
   @Autowired
   AuthenticationManager authenticationManager;
 
@@ -53,6 +65,12 @@ public class AuthController {
 
   @Autowired
   JwtUtils jwtUtils;
+
+  @Autowired
+  private ApplicationEventPublisher publisher;
+
+  @Autowired
+  UserServiceImpl userService;
 
   @PostMapping("/signin")
   public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
@@ -70,15 +88,18 @@ public class AuthController {
         .map(item -> item.getAuthority())
         .collect(Collectors.toList());
 
-    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, jwtCookie.toString())
-        .body(new UserInfoResponse(userDetails.getId(),
-            userDetails.getUsername(),
-            userDetails.getEmail(),
-            roles));
+    UserInfoResponse responseBody = new UserInfoResponse(userDetails.getId(),
+        userDetails.getUsername(),
+        userDetails.getEmail(),
+        userDetails.getPassword(),
+        roles);
+
+    return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, jwtCookie.toString()).body(responseBody);
   }
 
   @PostMapping("/signup")
-  public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
+  public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest,
+      final HttpServletRequest request) {
     if (userRepository.existsByUsername(signUpRequest.getUsername())) {
       return ResponseEntity
           .badRequest()
@@ -124,7 +145,15 @@ public class AuthController {
     user.setRoles(roles);
     userRepository.save(user);
 
-    return ResponseEntity.ok(new MessageResponse("User registered successfully!"));
+    publisher.publishEvent(new RegistrationCompleteEvent(user, applicationUrl(request))); // send registration email
+
+    return ResponseEntity
+        .ok(new MessageResponse("User registered successfully! Please check your email for verification."));
+  }
+
+  public String applicationUrl(HttpServletRequest request) {
+    return "http://" + request.getServerName() + ":"
+        + request.getServerPort() + request.getContextPath();
   }
 
   @PostMapping("/signout")
@@ -132,5 +161,62 @@ public class AuthController {
     ResponseCookie cookie = jwtUtils.getCleanJwtCookie();
     return ResponseEntity.ok().header(HttpHeaders.SET_COOKIE, cookie.toString())
         .body(new MessageResponse("You've been signed out!"));
-  }   
+  }
+
+  @GetMapping("/user")
+  public ResponseEntity<?> getUserDetails(@AuthenticationPrincipal Object principal) {
+    try {
+
+      String username;
+      if (principal instanceof UserDetails) {
+        username = ((UserDetails) principal).getUsername();
+      } else if (principal instanceof DefaultOAuth2User) {
+        DefaultOAuth2User oauth2User = (DefaultOAuth2User) principal;
+        String email = oauth2User.getAttribute("email");
+        if (email == null) {
+          return ResponseEntity
+              .status(HttpStatus.UNAUTHORIZED)
+              .body(new MessageResponse("Email attribute not found"));
+        }
+        username = email.toString().split("@")[0];
+      } else {
+        return ResponseEntity
+            .status(HttpStatus.UNAUTHORIZED)
+            .body(new MessageResponse("No authenticated user found"));
+      }
+
+      User user = userService.findByUsername(username);
+      if (user == null) {
+        return ResponseEntity
+            .status(HttpStatus.NOT_FOUND)
+            .body(new MessageResponse("User not found"));
+      }
+
+      List<String> roles = SecurityContextHolder.getContext()
+          .getAuthentication()
+          .getAuthorities()
+          .stream()
+          .map(GrantedAuthority::getAuthority)
+          .collect(Collectors.toList());
+
+      UserInfoResponse response = new UserInfoResponse(
+          user.getId(),
+          user.getUsername(),
+          user.getEmail(),
+          user.getImageUrl(),
+          roles);
+
+      return ResponseEntity.ok().body(response);
+    } catch (Exception e) {
+      logger.error("Error getting user details: {}", e.getMessage());
+      return ResponseEntity
+          .status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body(new MessageResponse("Error retrieving user details"));
+    }
+  }
+
+  @GetMapping("/username")
+  public String currentUserName(@AuthenticationPrincipal UserDetails userDetails) {
+    return (userDetails != null) ? userDetails.getUsername() : "";
+  }
 }

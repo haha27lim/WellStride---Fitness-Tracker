@@ -8,8 +8,7 @@ import com.example.Fitness_Tracker.entity.Role;
 
 import java.util.Optional;
 
-
 @Repository
-public interface RoleRepository extends JpaRepository<Role, Integer> {
-    Optional<Role> findByName(ERole name);
+public interface RoleRepository extends JpaRepository<Role, Long> {
+    Optional<Role> findByName(ERole appRole);
 }
