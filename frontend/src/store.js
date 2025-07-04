@@ -11,9 +11,6 @@ export const store = configureStore({
     workouts: workoutReducer,
     goals: goalReducer,
     progress: progressReducer,
+
   },
 });
-
-export type RootState = ReturnType<typeof store.getState>;
-
-export type AppDispatch = typeof store.dispatch;

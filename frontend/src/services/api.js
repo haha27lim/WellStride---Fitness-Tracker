@@ -22,6 +22,7 @@ api.interceptors.request.use(
 
           config.headers['Authorization'] = token;
           
+
           config.headers['X-Auth-Token'] = user.token;
           
         }
@@ -37,6 +38,7 @@ api.interceptors.request.use(
   }
 );
 
+
 api.interceptors.response.use(
   (response) => {
     return response;
@@ -49,6 +51,7 @@ api.interceptors.response.use(
       error.response?.data || error.message
     );
     
+
     if (error.response && error.response.status === 401) {
       console.log('Authentication expired, redirecting to login...');
       localStorage.removeItem('user');
