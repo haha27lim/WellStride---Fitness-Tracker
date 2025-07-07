@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { login } from '@/store/slices/authSlice';
+import '../styles/components/Login.css';
 
 const LoginPage = () => {
     const [username, setUsername] = React.useState('');
@@ -26,6 +27,10 @@ const LoginPage = () => {
         }
     }, [isAuthenticated, navigate]);
 
+    const handleGoogleLogin = () => {
+        window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
+    };
+
     return (
         <div className="flex justify-center items-center min-h-screen">
             <Card className="w-[350px]">
@@ -35,6 +40,23 @@ const LoginPage = () => {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleLogin}>
+                        <div className="form-group">
+                            <button
+                                type="button"
+                                onClick={handleGoogleLogin}
+                                className="google-login-button"
+                            >
+                                <img
+                                    src="/google-icon.svg"
+                                    alt="Google"
+                                    className="google-icon"
+                                />
+                                Sign in with Google
+                            </button>
+                        </div>
+
+                        <div className="or-login-with">Or login with</div>
+
                         <div className="grid w-full items-center gap-4">
                             <div className="flex flex-col space-y-1.5">
                                 <Label htmlFor="username">Username</Label>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Link, useNavigate } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '@/hooks/redux';
 import { register } from '@/store/slices/authSlice';
+import '../styles/components/Register.css';
 
 
 const RegisterPage = () => {
@@ -17,6 +18,12 @@ const RegisterPage = () => {
     const dispatch = useAppDispatch();
     const navigate = useNavigate();
     const { status, error, isAuthenticated } = useAppSelector((state) => state.auth);
+    const [, setIsGoogleRedirect] = useState(false);
+
+    const handleGoogleSignup = () => {
+        setIsGoogleRedirect(true);
+        window.location.href = `${import.meta.env.VITE_API_URL}/oauth2/authorization/google`;
+    };
 
     const handleRegister = (e) => {
         e.preventDefault();
@@ -29,11 +36,11 @@ const RegisterPage = () => {
         dispatch(register(signupData))
             .unwrap()
             .then(() => {
-                
+
                 navigate('/login');
             })
             .catch(() => {
-                
+
             });
     };
 
@@ -52,6 +59,23 @@ const RegisterPage = () => {
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleRegister}>
+                        <div className="form-group">
+                            <button
+                                type="button"
+                                onClick={handleGoogleSignup}
+                                className="google-login-button"
+                            >
+                                <img
+                                    src="/google-icon.svg"
+                                    alt="Google"
+                                    className="google-icon"
+                                />
+                                Sign up with Google
+                            </button>
+                        </div>
+
+                        <div className="or-login-with">Or sign up with</div>
+
                         <div className="grid w-full items-center gap-4">
                             <div className="flex flex-col space-y-1.5">
                                 <Label htmlFor="username">Username</Label>

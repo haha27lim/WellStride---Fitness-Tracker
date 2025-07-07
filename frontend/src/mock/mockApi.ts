@@ -1,9 +1,3 @@
-/**
- * Mock API service
- * Provides dummy data for development when the backend is not available
- */
-
-// Mock data
 const mockWorkouts = [
   {
     id: 1,
