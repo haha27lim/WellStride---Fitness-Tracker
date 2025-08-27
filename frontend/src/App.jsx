@@ -15,6 +15,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import HomePage from '@/pages/HomePage';
 import PrivateRoute from '@/components/PrivateRoute';
 import NotFound from './pages/NotFound';
+import OAuth2RedirectHandler from '@/components/Auth/OAuth2RedirectHandler';
 
 function App() {
   return (
@@ -37,6 +38,8 @@ function App() {
                   <Route path="/profile" element={<ProfilePage />} />
                 </Route>
               </Route>
+
+              <Route path="/oauth2/redirect" element={<OAuth2RedirectHandler />} />
 
               {/* Add 404 Not Found Route */}
               <Route path="*" element={<NotFound />} />

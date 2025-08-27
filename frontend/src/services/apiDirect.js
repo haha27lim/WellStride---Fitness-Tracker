@@ -50,7 +50,8 @@ export const request = async (url, options = {}) => {
     const response = await fetch(url, {
       method: options.method || 'GET',
       headers,
-      body: options.body ? JSON.stringify(options.body) : undefined
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      credentials: 'include',
     });
 
     console.log(`API Response for ${url}:`, response.status);

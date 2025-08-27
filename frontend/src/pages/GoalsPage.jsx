@@ -16,7 +16,7 @@ const GoalsPage = () => {
     
     const [goals, setGoals] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState(null);
 
     // State for the goal form
     const [goalType, setGoalType] = useState('');

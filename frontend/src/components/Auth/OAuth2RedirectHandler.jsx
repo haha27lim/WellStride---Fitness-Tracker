@@ -1,27 +1,34 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from "../../contexts/AuthContext";
-import api from "../../services/userapi";
+import { useAppSelector, useAppDispatch } from "../../hooks/redux";
+import { setUser, setAdmin } from "../../store/slices/authSlice";
+import api from "../../services/api";
 
 const OAuth2RedirectHandler = () => {
   const navigate = useNavigate();
-  const { setCurrentUser, setShowAdminBoard } = useAuth();
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useAppSelector((state) => state.auth.isAuthenticated);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+      return;
+    }
+
     const handleOAuth2Redirect = async () => {
       try {
         const response = await api.get('/auth/user');
         const userData = response.data;
         
-        setCurrentUser(userData);
-        
+        // Dispatch user data to Redux store
+        dispatch(setUser(userData));
 
         if (userData.roles && userData.roles.includes("ROLE_ADMIN")) {
-          setShowAdminBoard(true);
+          dispatch(setAdmin(true));
         } else {
-          setShowAdminBoard(false);
+          dispatch(setAdmin(false));
         }
         
         navigate('/dashboard');
@@ -38,7 +45,7 @@ const OAuth2RedirectHandler = () => {
     };
 
     handleOAuth2Redirect();
-  }, [navigate, setCurrentUser, setShowAdminBoard]);
+  }, [navigate, dispatch, isAuthenticated]);
 
   if (loading) {
     return <div>Completing authentication...</div>;

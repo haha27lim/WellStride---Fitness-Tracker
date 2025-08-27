@@ -16,7 +16,7 @@ const WorkoutsPage = () => {
 
     const [workouts, setWorkouts] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
 
 

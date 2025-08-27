@@ -2,7 +2,7 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from "../../services/api";
 import { toast } from 'sonner';
 
-const API_URL = "/api/auth/";
+const API_URL = `${import.meta.env.VITE_API_URL}/api/auth/`;
 
 
 const storedUser = localStorage.getItem("user");
@@ -59,7 +59,18 @@ export const logout = createAsyncThunk("auth/logout", async () => {
 const authSlice = createSlice({
   name: "auth",
   initialState,
-  reducers: {},
+  reducers: {
+    setUser: (state, action) => {
+      state.user = action.payload;
+      state.isAuthenticated = true;
+      localStorage.setItem("user", JSON.stringify(action.payload));
+    },
+    setAdmin: (state, action) => {
+      if (state.user) {
+        state.user.isAdmin = action.payload;
+      }
+    }
+  },
   extraReducers: (builder) => {
     builder
 
@@ -103,4 +114,5 @@ const authSlice = createSlice({
   },
 });
 
+export const { setUser, setAdmin } = authSlice.actions;
 export default authSlice.reducer;
